@@ -15,7 +15,7 @@ class StressTester(updater: ActorRef, secondaryReader: ActorRef, reportCollector
     case StartTest(expectedMaxLoops) =>
       this.maxLoops = expectedMaxLoops
       doStart()
-    case other: _ => log.error(s"Tester is idle but received $other. Start tests first!")
+    case other => log.error(s"Tester is idle but received $other. Start tests first!")
   }
 
   def working: Receive = {
