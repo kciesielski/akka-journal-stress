@@ -1,5 +1,6 @@
 package api
 
+import core.stress.web.TesterEndpoint
 import core.{CoreActors, Core}
 import akka.actor.Props
 import spray.routing.RouteConcatenation
@@ -16,9 +17,7 @@ trait Api extends RouteConcatenation {
   private implicit val _ = system.dispatcher
 
   val routes =
-    new RegistrationService(registration).route ~
-    new MessengerService(messenger).route
+    new TesterEndpoint(tester, reportCollector).route
 
   val rootService = system.actorOf(Props(new RoutedHttpService(routes)))
-
 }

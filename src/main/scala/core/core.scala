@@ -1,6 +1,7 @@
 package core
 
 import akka.actor.{Props, ActorSystem}
+import core.stress.{StressTester, ReportCollector, JournaledActor}
 
 /**
  * Core is type containing the ``system: ActorSystem`` member. This enables us to use it in our
@@ -37,7 +38,8 @@ trait BootedCore extends Core {
 trait CoreActors {
   this: Core =>
 
-  val registration = system.actorOf(Props[RegistrationActor])
-  val messenger    = system.actorOf(Props[MessengerActor])
-
+  val remoteReader = system.actorOf(Props(new JournaledActor))
+  val updater = system.actorOf(Props(new JournaledActor))
+  val reportCollector = system.actorOf(Props(new ReportCollector))
+  val tester = system.actorOf(Props(new StressTester(updater, remoteReader, reportCollector)))
 }
