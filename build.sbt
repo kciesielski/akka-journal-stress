@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"  %% "akka-slf4j"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-persistence-experimental"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-testkit"     % akkaVersion    % "test",
+  "joda-time"           % "joda-time"        % "2.4",
   "ch.qos.logback"      % "logback-classic"  % "1.0.13",
   "io.spray"            % "spray-can"        % "1.2-20130712",
   "io.spray"            % "spray-routing"    % "1.2-20130712",
