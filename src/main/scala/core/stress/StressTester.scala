@@ -5,7 +5,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef}
 class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
   extends Actor with ActorLogging {
 
-  var loopCount = 0
+  var loopCount = 1
   var maxLoops = 0
   var lastPersistReport: StatePersisted = _
 

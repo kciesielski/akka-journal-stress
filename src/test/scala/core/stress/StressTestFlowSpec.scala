@@ -23,7 +23,8 @@ class StressTestFlowSpec extends FlatSpec with Matchers with Directives with Sca
 
   it should "Match all trials for in-memory journal" in {
     // given
-    val command = StartTest(10)
+    val expectedLoopCount = 10
+    val command = StartTest(expectedLoopCount)
 
     // when
     Post("/testLoop", HttpEntity(`application/json`, write(command))) ~> app.testerRoute ~> check {
@@ -38,7 +39,7 @@ class StressTestFlowSpec extends FlatSpec with Matchers with Directives with Sca
         status.intValue should equal(200)
         reports = read[List[TesterReport]](responseAs[String])
       }
-      reports.length > 10
+      reports.size == expectedLoopCount
     }
 
     reports.foreach {
