@@ -12,6 +12,8 @@ val akkaVersion = "2.3.4"
 
 val json4sVersion = "3.2.10"
 
+val sprayVersion = "1.3.1"
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka"  %% "akka-actor"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-slf4j"       % akkaVersion,
@@ -22,12 +24,12 @@ libraryDependencies ++= Seq(
   "org.json4s"         %% "json4s-ext"       % json4sVersion,
   "org.json4s"         %% "json4s-mongo"     % json4sVersion,
   "ch.qos.logback"      % "logback-classic"  % "1.0.13",
-  "io.spray"            % "spray-can"        % "1.2-20130712",
-  "io.spray"            % "spray-routing"    % "1.2-20130712",
+  "io.spray"            % "spray-can"        % sprayVersion,
+  "io.spray"            % "spray-routing"    % sprayVersion,
   "io.spray"           %% "spray-json"       % "1.2.3",
-  "org.specs2"         %% "specs2"           % "1.14"         % "test",
-  "io.spray"            % "spray-testkit"    % "1.2-20130712" % "test",
-  "com.novocode"        % "junit-interface"  % "0.7"          % "test->default"
+  "io.spray"            % "spray-testkit"    % sprayVersion % "test",
+  "com.novocode"        % "junit-interface"  % "0.7"          % "test->default",
+  "org.scalatest"      %% "scalatest"        % "2.2.1"
 )
 
 scalacOptions ++= Seq(
