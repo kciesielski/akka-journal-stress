@@ -1,4 +1,4 @@
-akka-dynamo-journal-stress
+akka-journal-stress
 ==========================
 
-Stress tests to check performance of DynamoDB - based Akka journal replication. 
+Stress tests to check performance of Akka journal replication. 
