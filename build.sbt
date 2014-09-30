@@ -10,7 +10,7 @@ resolvers += "spray nightlies" at "http://nightlies.spray.io"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-val akkaVersion = "2.3.4"
+val akkaVersion = "2.3.3"
 
 val json4sVersion = "3.2.10"
 

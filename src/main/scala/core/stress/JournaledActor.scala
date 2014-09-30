@@ -1,37 +1,26 @@
 package core.stress
 
 import akka.actor.ActorLogging
-import akka.persistence.PersistentActor
+import akka.persistence.{Persistent, Processor}
 import org.joda.time.DateTime
 
-class JournaledActor extends PersistentActor with ActorLogging {
+class JournaledActor extends Processor with ActorLogging {
 
   var state = InMemoryActorState.initial
 
-  override def persistenceId = "journaled-actor"
-
-  override def receiveRecover = {
-    case newState: JournaledActorState => updateState(newState)
-  }
-
-  override def receiveCommand = {
-    case UpdateStateCommand(number) => doUpdate(number)
+  override def receive = {
+    case Persistent(newState, seq) => updateState(newState)
     case ReadState => sender ! state
-  }
-
-  private def doUpdate(number: Long) {
-    val newState = JournaledActorState(number, now())
-    persistAsync(newState) { persistedState =>
-      updateState(persistedState)
-      sender ! StatePersisted(persistedState)
-    }
+    case other => log.error(s"Unrecognized command: $other")
   }
 
   private def now() = new DateTime()
 
-  private def updateState(newState: JournaledActorState) {
-    val diffMillis = calculateRecoveryTime(newState)
-    this.state = InMemoryActorState(newState.number, diffMillis)
+  private def updateState(newState: Any) {
+    log.info("Updating state")
+//    val diffMillis = calculateRecoveryTime(newState)
+    this.state = InMemoryActorState(newState.asInstanceOf[UpdateStateCommand].number, 0L) // TODO...
+    sender ! StatePersisted(JournaledActorState(state.number, new DateTime()))
   }
 
   private def calculateRecoveryTime(newState: JournaledActorState) = {

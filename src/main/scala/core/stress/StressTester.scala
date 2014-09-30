@@ -1,6 +1,7 @@
 package core.stress
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.persistence.Persistent
 
 class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
   extends Actor with ActorLogging {
@@ -32,7 +33,7 @@ class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
 
   private def doWrite() {
     log.debug("Executing write")
-    journaledActor ! UpdateStateCommand(loopCount)
+    journaledActor ! Persistent(UpdateStateCommand(loopCount))
   }
 
   private def doRead(persistReport: StatePersisted) {
