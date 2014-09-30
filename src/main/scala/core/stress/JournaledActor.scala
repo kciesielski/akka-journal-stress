@@ -15,11 +15,16 @@ class JournaledActor extends PersistentActor with ActorLogging {
   }
 
   override def receiveCommand = {
-    case UpdateStateCommand(number) =>
-      val newState = JournaledActorState(number, now())
-      persistAsync(newState) { persistedState =>
-        updateState(persistedState)
-      }
+    case UpdateStateCommand(number) => doUpdate(number)
+    case ReadState => sender ! state
+  }
+
+  private def doUpdate(number: Long) {
+    val newState = JournaledActorState(number, now())
+    persistAsync(newState) { persistedState =>
+      updateState(persistedState)
+      sender ! StatePersisted
+    }
   }
 
   private def now() = new DateTime()
@@ -43,3 +48,7 @@ object InMemoryActorState {
 }
 
 case class UpdateStateCommand(number: Long)
+
+case class StatePersisted(state: JournaledActorState)
+
+case object ReadState
