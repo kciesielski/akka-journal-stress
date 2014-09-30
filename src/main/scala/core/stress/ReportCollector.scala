@@ -9,7 +9,7 @@ class ReportCollector extends Actor {
   var data = new ListBuffer[TesterReport]()
 
   override def receive = {
-    case GetFullReport => sender ! data
+    case GetFullReport => sender ! data.toList
     case report: TesterReport => data.append(report)
   }
 }

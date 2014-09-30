@@ -23,7 +23,7 @@ class JournaledActor extends PersistentActor with ActorLogging {
     val newState = JournaledActorState(number, now())
     persistAsync(newState) { persistedState =>
       updateState(persistedState)
-      sender ! StatePersisted
+      sender ! StatePersisted(persistedState)
     }
   }
 
