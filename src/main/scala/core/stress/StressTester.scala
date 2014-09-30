@@ -2,7 +2,7 @@ package core.stress
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 
-class StressTester(updater: ActorRef, secondaryReader: ActorRef, reportCollector: ActorRef)
+class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
   extends Actor with ActorLogging {
 
   var loopCount = 0
@@ -32,31 +32,35 @@ class StressTester(updater: ActorRef, secondaryReader: ActorRef, reportCollector
 
   private def doWrite() {
     log.debug("Executing write")
-    updater ! UpdateStateCommand(loopCount)
+    journaledActor ! UpdateStateCommand(loopCount)
   }
 
   private def doRead(persistReport: StatePersisted) {
     log.debug("Asking the reader node to read state")
     this.lastPersistReport = persistReport
-    secondaryReader ! ReadState
+    journaledActor ! ReadState
   }
 
   private def tryRepeatRead() {
     log.debug("Retrying read due to non-matching state")
-    secondaryReader ! ReadState
+    journaledActor ! ReadState
   }
 
   private def doCompare(readState: InMemoryActorState) {
-    log.info(s"Read state: ${readState.number}, recovered in ${readState.recoveryTimeInMs}, last persisted = ${lastPersistReport.state.number}")
+    log.info(s"Read state: ${readState.number}, recovered in ${readState.recoveryTimeInMs}, " +
+      s"last persisted = ${lastPersistReport.state.number}")
     if (readState.number != lastPersistReport.state.number) {
-      reportCollector ! ReportNonMatching(expected = lastPersistReport.state.number, found = readState.number)
+      reportCollector ! reportFailed(readState)
       tryRepeatRead()
     }
     else {
-      reportCollector ! ReportMatching(readState.number, readState.recoveryTimeInMs)
+      reportCollector ! TesterReport(readState.number, readState.number, readState.recoveryTimeInMs)
       repeatFlowOrEnd()
     }
   }
+
+  def reportFailed(readState: InMemoryActorState): TesterReport =
+    TesterReport(number = readState.number, expected = lastPersistReport.state.number, readState.recoveryTimeInMs)
 
   private def repeatFlowOrEnd() {
     if (loopCount == maxLoops) {
@@ -69,10 +73,6 @@ class StressTester(updater: ActorRef, secondaryReader: ActorRef, reportCollector
   }
 }
 
-trait TesterReport
-
-case class ReportMatching(number: Long, recoveryTimeMs: Long) extends TesterReport
-
-case class ReportNonMatching(expected: Long, found: Long) extends TesterReport
+case class TesterReport(number: Long, expected: Long, recoveryTimeMs: Long)
 
 case class StartTest(maxLoops: Int)

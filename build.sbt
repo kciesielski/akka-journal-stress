@@ -29,7 +29,8 @@ libraryDependencies ++= Seq(
   "io.spray"           %% "spray-json"       % "1.2.3",
   "io.spray"            % "spray-testkit"    % sprayVersion % "test",
   "com.novocode"        % "junit-interface"  % "0.7"          % "test->default",
-  "org.scalatest"      %% "scalatest"        % "2.2.1"
+  "com.jayway.awaitility" % "awaitility-scala" % "1.6.1" % "test",
+  "org.scalatest"       %% "scalatest"        % "2.2.1" % "test"
 )
 
 scalacOptions ++= Seq(

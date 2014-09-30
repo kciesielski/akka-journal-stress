@@ -16,8 +16,9 @@ trait Api extends RouteConcatenation {
 
   private implicit val _ = system.dispatcher
 
-  val routes =
-    new TesterEndpoint(tester, reportCollector).route
+  val testerRoute = new TesterEndpoint(tester, reportCollector).route
+  val routes = testerRoute
+
 
   val rootService = system.actorOf(Props(new RoutedHttpService(routes)))
 }
