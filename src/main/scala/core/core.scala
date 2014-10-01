@@ -38,7 +38,9 @@ trait BootedCore extends Core {
 trait CoreActors {
   this: Core =>
 
-  val journaledActor = system.actorOf(Props(new JournaledActor))
+  val writer = system.actorOf(Props[JournaledActor])
+  val reader = writer
+
   val reportCollector = system.actorOf(Props(new ReportCollector))
-  val tester = system.actorOf(Props(new StressTester(journaledActor, reportCollector)))
+  val tester = system.actorOf(Props(new StressTester(writer, reader, reportCollector)))
 }

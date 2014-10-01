@@ -1,10 +1,9 @@
 package core.stress
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import akka.persistence.Persistent
 import org.joda.time.DateTime
 
-class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
+class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef)
   extends Actor with ActorLogging {
 
   var loopCount = 1
@@ -36,17 +35,17 @@ class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
     log.debug("Executing write")
     val newState = JournaledActorState(loopCount, DateTime.now())
     this.lastPersistReport = newState
-    journaledActor ! Persistent(newState)
+    writer ! newState
   }
 
   private def doRead() {
     log.debug("Asking the reader node to read state")
-    journaledActor ! ReadState
+    reader ! ReadState
   }
 
   private def tryRepeatRead() {
     log.debug("Retrying read due to non-matching state")
-    journaledActor ! ReadState
+    reader ! ReadState
   }
 
   private def doCompare(readState: JournaledActorState) {

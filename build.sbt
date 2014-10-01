@@ -10,7 +10,7 @@ resolvers += "spray nightlies" at "http://nightlies.spray.io"
 
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
-val akkaVersion = "2.3.3"
+val akkaVersion = "2.3.4"
 
 val json4sVersion = "3.2.10"
 
@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"  %% "akka-slf4j"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-persistence-experimental"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-testkit"     % akkaVersion    % "test",
-  "com.sclasen"        %% "akka-persistence-dynamodb" % "0.3.2",
+  "com.sclasen"        %% "akka-persistence-dynamodb" % "0.3.4",
   "joda-time"           % "joda-time"        % "2.4",
   "org.json4s"         %% "json4s-jackson"   % json4sVersion,
   "org.json4s"         %% "json4s-ext"       % json4sVersion,

@@ -1,26 +1,37 @@
 package core.stress
 
 import akka.actor.ActorLogging
-import akka.persistence.{Persistent, Processor}
+import akka.persistence.{PersistentActor, Persistent, Processor}
 import org.joda.time.DateTime
 
-class JournaledActor extends Processor with ActorLogging {
+class JournaledActor extends PersistentActor with ActorLogging {
 
   var state = JournaledActorState.initial()
 
-  override def receive = {
-    case Persistent(newState, seq) => updateState(newState)
+  override def receiveCommand = {
+    case newState: JournaledActorState => updateState(newState)
     case ReadState => sender ! state
     case other => log.error(s"Unrecognized command: $other")
   }
 
   private def now() = new DateTime()
 
-  private def updateState(newState: Any) {
+  private def updateState(newState: JournaledActorState) {
     log.info("Updating state")
-    this.state = newState.asInstanceOf[JournaledActorState]
-    sender ! "persisted"
+    persistAsync(newState) {
+      persistedState =>
+        this.state = persistedState
+        sender ! "persisted"
+    }
   }
+
+  override def receiveRecover = {
+    case someState: JournaledActorState =>
+      this.state = someState
+      log.info(s"Recovered with state: $someState")
+  }
+
+  override def persistenceId = "journaled-actor"
 }
 
 case class JournaledActorState(number: Long, sendTime: DateTime)
