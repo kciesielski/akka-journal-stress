@@ -5,6 +5,7 @@ import api.Api
 import com.jayway.awaitility.scala.AwaitilitySupport
 import core.{BootedCore, CoreActors}
 import org.json4s.DefaultFormats
+import org.json4s.ext.JodaTimeSerializers
 import org.json4s.jackson.Serialization._
 import org.scalatest.{FlatSpec, Matchers}
 import spray.http.HttpEntity
@@ -19,7 +20,7 @@ class StressTestFlowSpec extends FlatSpec with Matchers with Directives with Sca
 
   val app = new BootedCore with CoreActors with Api with Web
 
-  implicit val formats = DefaultFormats
+  implicit val formats = DefaultFormats  ++ JodaTimeSerializers.all
 
   it should "Match all trials for in-memory journal" in {
     // given

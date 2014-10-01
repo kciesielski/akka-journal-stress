@@ -6,7 +6,7 @@ import org.joda.time.DateTime
 
 class JournaledActor extends Processor with ActorLogging {
 
-  var state = InMemoryActorState.initial
+  var state = JournaledActorState.initial()
 
   override def receive = {
     case Persistent(newState, seq) => updateState(newState)
@@ -18,26 +18,17 @@ class JournaledActor extends Processor with ActorLogging {
 
   private def updateState(newState: Any) {
     log.info("Updating state")
-//    val diffMillis = calculateRecoveryTime(newState)
-    this.state = InMemoryActorState(newState.asInstanceOf[UpdateStateCommand].number, 0L) // TODO...
-    sender ! StatePersisted(JournaledActorState(state.number, new DateTime()))
-  }
-
-  private def calculateRecoveryTime(newState: JournaledActorState) = {
-    now().getMillis - newState.persistenceTime.getMillis
+    this.state = newState.asInstanceOf[JournaledActorState]
+    sender ! "persisted"
   }
 }
 
-case class JournaledActorState(number: Long, persistenceTime: DateTime)
+case class JournaledActorState(number: Long, sendTime: DateTime)
 
-case class InMemoryActorState(number: Long, recoveryTimeInMs: Long)
 
-object InMemoryActorState {
-  def initial = InMemoryActorState(0L, 0L)
+object JournaledActorState {
+  def initial() = JournaledActorState(0L, DateTime.now())
 }
-
 case class UpdateStateCommand(number: Long)
-
-case class StatePersisted(state: JournaledActorState)
 
 case object ReadState

@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"  %% "akka-slf4j"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-persistence-experimental"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-testkit"     % akkaVersion    % "test",
-  "com.sclasen"        %% "akka-persistence-dynamodb" % "0.3.1",
+  "com.sclasen"        %% "akka-persistence-dynamodb" % "0.3.2",
   "joda-time"           % "joda-time"        % "2.4",
   "org.json4s"         %% "json4s-jackson"   % json4sVersion,
   "org.json4s"         %% "json4s-ext"       % json4sVersion,

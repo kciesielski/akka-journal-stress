@@ -2,13 +2,14 @@ package core.stress
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
 import akka.persistence.Persistent
+import org.joda.time.DateTime
 
 class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
   extends Actor with ActorLogging {
 
   var loopCount = 1
   var maxLoops = 0
-  var lastPersistReport: StatePersisted = _
+  var lastPersistReport: JournaledActorState = _
 
   override def receive = idle
 
@@ -20,8 +21,8 @@ class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
   }
 
   def working: Receive = {
-    case persistReport: StatePersisted => doRead(persistReport)
-    case state: InMemoryActorState => doCompare(state)
+    case "persisted" => doRead()
+    case state: JournaledActorState => doCompare(state)
     case StartTest => log.error(s"Cannot start tester, already in progress! ($loopCount / $maxLoops)")
   }
 
@@ -33,12 +34,13 @@ class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
 
   private def doWrite() {
     log.debug("Executing write")
-    journaledActor ! Persistent(UpdateStateCommand(loopCount))
+    val newState = JournaledActorState(loopCount, DateTime.now())
+    this.lastPersistReport = newState
+    journaledActor ! Persistent(newState)
   }
 
-  private def doRead(persistReport: StatePersisted) {
+  private def doRead() {
     log.debug("Asking the reader node to read state")
-    this.lastPersistReport = persistReport
     journaledActor ! ReadState
   }
 
@@ -47,21 +49,20 @@ class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
     journaledActor ! ReadState
   }
 
-  private def doCompare(readState: InMemoryActorState) {
-    log.info(s"Read state: ${readState.number}, recovered in ${readState.recoveryTimeInMs}, " +
-      s"last persisted = ${lastPersistReport.state.number}")
-    if (readState.number != lastPersistReport.state.number) {
+  private def doCompare(readState: JournaledActorState) {
+    log.info(s"Read state: ${readState.number}, last persisted = ${lastPersistReport.number}")
+    if (readState.number != lastPersistReport.number) {
       reportCollector ! reportFailed(readState)
       tryRepeatRead()
     }
     else {
-      reportCollector ! TesterReport(readState.number, readState.number, readState.recoveryTimeInMs)
+      reportCollector ! TesterReport(readState.number, readState.number, readState.sendTime)
       repeatFlowOrEnd()
     }
   }
 
-  def reportFailed(readState: InMemoryActorState): TesterReport =
-    TesterReport(number = readState.number, expected = lastPersistReport.state.number, readState.recoveryTimeInMs)
+  def reportFailed(readState: JournaledActorState): TesterReport =
+    TesterReport(number = readState.number, expected = lastPersistReport.number, readState.sendTime)
 
   private def repeatFlowOrEnd() {
     if (loopCount == maxLoops) {
@@ -74,6 +75,6 @@ class StressTester(journaledActor: ActorRef, reportCollector: ActorRef)
   }
 }
 
-case class TesterReport(number: Long, expected: Long, recoveryTimeMs: Long)
+case class TesterReport(number: Long, expected: Long, msgCreationTime: DateTime)
 
 case class StartTest(maxLoops: Int)
