@@ -20,6 +20,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"  %% "akka-actor"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-slf4j"       % akkaVersion,
   "com.typesafe.akka"  %% "akka-persistence-experimental"       % akkaVersion,
+  "com.typesafe.akka"  %% "akka-contrib"     % akkaVersion,
   "com.typesafe.akka"  %% "akka-testkit"     % akkaVersion    % "test",
   "com.sclasen"        %% "akka-persistence-dynamodb" % "0.3.4",
   "joda-time"           % "joda-time"        % "2.4",

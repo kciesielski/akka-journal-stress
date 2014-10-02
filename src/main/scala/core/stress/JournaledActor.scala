@@ -1,12 +1,17 @@
 package core.stress
 
 import akka.actor.ActorLogging
+import akka.contrib.pattern.{DistributedPubSubMediator, DistributedPubSubExtension}
 import akka.persistence.{PersistentActor, Persistent, Processor}
 import org.joda.time.DateTime
 
 class JournaledActor extends PersistentActor with ActorLogging {
 
   var state = JournaledActorState.initial()
+  val mediator = DistributedPubSubExtension(context.system).mediator
+  var failureCountdown = 50
+
+  import DistributedPubSubMediator.Publish
 
   override def receiveCommand = {
     case newState: JournaledActorState => updateState(newState)
@@ -21,6 +26,13 @@ class JournaledActor extends PersistentActor with ActorLogging {
       persistedState =>
         this.state = persistedState
         sender ! "persisted"
+        if (failureCountdown > 0) {
+          mediator ! Publish("topicName", newState)
+        }
+        else {
+          failureCountdown = 50
+        }
+        failureCountdown = failureCountdown - 1
     }
   }
 

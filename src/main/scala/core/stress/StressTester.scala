@@ -39,18 +39,18 @@ class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef
   }
 
   private def doRead() {
-    log.debug("Asking the reader node to read state")
+    log.debug("Spawning a tester child to start reading")
     reader ! ReadState
   }
 
   private def tryRepeatRead() {
-    log.debug("Retrying read due to non-matching state")
+//    log.debug("Retrying read due to non-matching state")
     Thread.sleep(10)
     reader ! ReadState
   }
 
   private def doCompare(readState: ViewState) {
-    log.info(s"Read state: ${readState.journaledState.number}, last persisted = ${lastPersistReport.number}")
+//    log.info(s"Read state: ${readState.journaledState.number}, last persisted = ${lastPersistReport.number}")
     if (readState.journaledState.number != lastPersistReport.number) {
       reportCollector ! reportFailed(readState)
       tryRepeatRead()
