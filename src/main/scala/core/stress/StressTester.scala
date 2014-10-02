@@ -21,7 +21,7 @@ class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef
 
   def working: Receive = {
     case "persisted" => doRead()
-    case state: JournaledActorState => doCompare(state)
+    case state: ViewState => doCompare(state)
     case StartTest => log.error(s"Cannot start tester, already in progress! ($loopCount / $maxLoops)")
   }
 
@@ -45,23 +45,26 @@ class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef
 
   private def tryRepeatRead() {
     log.debug("Retrying read due to non-matching state")
+    Thread.sleep(10)
     reader ! ReadState
   }
 
-  private def doCompare(readState: JournaledActorState) {
-    log.info(s"Read state: ${readState.number}, last persisted = ${lastPersistReport.number}")
-    if (readState.number != lastPersistReport.number) {
+  private def doCompare(readState: ViewState) {
+    log.info(s"Read state: ${readState.journaledState.number}, last persisted = ${lastPersistReport.number}")
+    if (readState.journaledState.number != lastPersistReport.number) {
       reportCollector ! reportFailed(readState)
       tryRepeatRead()
     }
     else {
-      reportCollector ! TesterReport(readState.number, readState.number, readState.sendTime)
+      reportCollector ! TesterReport(lastPersistReport.number, lastPersistReport.number,
+        readState.journaledState.sendTime, readState.recoveryTimeMs)
       repeatFlowOrEnd()
     }
   }
 
-  def reportFailed(readState: JournaledActorState): TesterReport =
-    TesterReport(number = readState.number, expected = lastPersistReport.number, readState.sendTime)
+  def reportFailed(readState: ViewState): TesterReport =
+    TesterReport(number = readState.journaledState.number, expected = lastPersistReport.number,
+      readState.journaledState.sendTime, 0L)
 
   private def repeatFlowOrEnd() {
     if (loopCount == maxLoops) {
@@ -74,6 +77,6 @@ class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef
   }
 }
 
-case class TesterReport(number: Long, expected: Long, msgCreationTime: DateTime)
+case class TesterReport(number: Long, expected: Long, msgCreationTime: DateTime, recoveryMs: Long)
 
 case class StartTest(maxLoops: Int)

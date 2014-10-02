@@ -10,7 +10,6 @@ class JournaledActor extends PersistentActor with ActorLogging {
 
   override def receiveCommand = {
     case newState: JournaledActorState => updateState(newState)
-    case ReadState => sender ! state
     case other => log.error(s"Unrecognized command: $other")
   }
 
@@ -42,4 +41,3 @@ object JournaledActorState {
 }
 case class UpdateStateCommand(number: Long)
 
-case object ReadState

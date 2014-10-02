@@ -1,7 +1,7 @@
 package core
 
 import akka.actor.{Props, ActorSystem}
-import core.stress.{StressTester, ReportCollector, JournaledActor}
+import core.stress.{JournaledView, StressTester, ReportCollector, JournaledActor}
 
 /**
  * Core is type containing the ``system: ActorSystem`` member. This enables us to use it in our
@@ -39,7 +39,7 @@ trait CoreActors {
   this: Core =>
 
   val writer = system.actorOf(Props[JournaledActor])
-  val reader = writer
+  val reader = system.actorOf(Props[JournaledView])
 
   val reportCollector = system.actorOf(Props(new ReportCollector))
   val tester = system.actorOf(Props(new StressTester(writer, reader, reportCollector)))
