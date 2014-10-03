@@ -14,8 +14,9 @@ class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef
   override def receive = idle
 
   def idle: Receive = {
-    case StartTest(expectedMaxLoops) =>
+    case StartTest(expectedMaxLoops, failFrequencyOpt) =>
       this.maxLoops = expectedMaxLoops
+      failFrequencyOpt.foreach(writer ! SetFailFrequency(_))
       doStart()
     case other => log.error(s"Tester is idle but received $other. Start tests first!")
   }
@@ -64,4 +65,4 @@ class StressTester(writer: ActorRef, reader: ActorRef, reportCollector: ActorRef
 
 case class TesterReport(number: Long, expected: Long, msgCreationTimeOpt: Option[DateTime], recoveryMsOpt: Option[Long])
 
-case class StartTest(maxLoops: Int)
+case class StartTest(maxLoops: Int, failFrequency: Option[Int])

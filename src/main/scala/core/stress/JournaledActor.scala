@@ -1,24 +1,26 @@
 package core.stress
 
 import akka.actor.ActorLogging
-import akka.contrib.pattern.{DistributedPubSubMediator, DistributedPubSubExtension}
-import akka.persistence.{PersistentActor, Persistent, Processor}
+import akka.contrib.pattern.DistributedPubSubExtension
+import akka.persistence.PersistentActor
 import org.joda.time.DateTime
 
 class JournaledActor extends PersistentActor with ActorLogging {
 
   var state = JournaledActorState.initial()
   val mediator = DistributedPubSubExtension(context.system).mediator
-  var failureCountdown = 50
+  var failFrequency = 50
+  var failureCountdown = failFrequency
 
-  import DistributedPubSubMediator.Publish
+  import akka.contrib.pattern.DistributedPubSubMediator.Publish
 
   override def receiveCommand = {
     case newState: JournaledActorState => updateState(newState)
+    case SetFailFrequency(newFailFreq) =>
+      this.failFrequency = newFailFreq
+      resetFailCountdown()
     case other => log.error(s"Unrecognized command: $other")
   }
-
-  private def now() = new DateTime()
 
   private def updateState(newState: JournaledActorState) {
     log.info("Updating state")
@@ -29,11 +31,14 @@ class JournaledActor extends PersistentActor with ActorLogging {
         if (failureCountdown > 0) {
           mediator ! Publish("topicName", newState)
         }
-        else {
-          failureCountdown = 50
-        }
+        else
+          resetFailCountdown()
         failureCountdown = failureCountdown - 1
     }
+  }
+
+  private def resetFailCountdown() {
+    failureCountdown = failFrequency
   }
 
   override def receiveRecover = {
@@ -54,3 +59,5 @@ object JournaledActorState {
 case class UpdateStateCommand(number: Long)
 
 case class PersistConfirmation(number: Long)
+
+case class SetFailFrequency(freq: Int)
