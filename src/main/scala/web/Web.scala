@@ -17,8 +17,8 @@ import spray.can.Http
  * configuration, especially when it comes to the threading model.
  */
 trait Web {
-  this: Api with CoreActors with Core =>
+  this: App with Api with CoreActors with Core =>
 
-  IO(Http)(system) ! Http.Bind(rootService, "0.0.0.0", port = 8080)
+  IO(Http)(system) ! Http.Bind(rootService, "0.0.0.0", port = restPort)
 
 }

@@ -1,6 +1,8 @@
 package core
 
-import akka.actor.{Props, ActorSystem}
+import akka.actor.{PoisonPill, Props, ActorSystem}
+import akka.contrib.pattern.{ClusterSingletonProxy, ClusterSingletonManager}
+import com.typesafe.config.ConfigFactory
 import core.stress.{JournaledView, StressTester, ReportCollector, JournaledActor}
 
 /**
@@ -9,6 +11,7 @@ import core.stress.{JournaledView, StressTester, ReportCollector, JournaledActor
  */
 trait Core {
 
+  def restPort: Int
   implicit def system: ActorSystem
 
 }
@@ -18,11 +21,23 @@ trait Core {
  * termination handler to stop the system when the JVM exits.
  */
 trait BootedCore extends Core {
+  this: App =>
+
+  val nodePortString: scala.Predef.String = List.fromArray(args, 0, args.length).toList.headOption.getOrElse(throw new IllegalArgumentException())
+  val a: scala.Predef.String = "1234"
+  val b = a.toInt
+  val nodePort = nodePortString.toInt
+  val restPortArg = args.view.toList.tail.headOption.getOrElse("8080").toInt
+
+  def restPort = restPortArg
+
+  val conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + nodePort)
+    .withFallback(ConfigFactory.load())
 
   /**
    * Construct the ActorSystem we will use in our application
    */
-  implicit lazy val system = ActorSystem("akka-spray")
+  implicit lazy val system = ActorSystem("ClusterSystem", conf)
 
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
@@ -38,7 +53,19 @@ trait BootedCore extends Core {
 trait CoreActors {
   this: Core =>
 
-  val writer = system.actorOf(Props[JournaledActor])
+  system.actorOf(
+    ClusterSingletonManager.props(
+      singletonProps = Props(classOf[JournaledActor]),
+      singletonName = "writer",
+      terminationMessage = PoisonPill,
+      role = None))
+
+  val writer = system.actorOf(
+    ClusterSingletonProxy.props(
+      singletonPath = "/user/singleton/writer",
+      role = None),
+    name = "writerProxy")
+
   val reader = system.actorOf(Props[JournaledView])
 
   val reportCollector = system.actorOf(Props(new ReportCollector))
