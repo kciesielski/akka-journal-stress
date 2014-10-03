@@ -23,11 +23,8 @@ trait Core {
 trait BootedCore extends Core {
   this: App =>
 
-  val nodePortString: scala.Predef.String = List.fromArray(args, 0, args.length).toList.headOption.getOrElse(throw new IllegalArgumentException())
-  val a: scala.Predef.String = "1234"
-  val b = a.toInt
-  val nodePort = nodePortString.toInt
-  val restPortArg = args.view.toList.tail.headOption.getOrElse("8080").toInt
+  val nodePort: Int = args.view.headOption.getOrElse(throw new IllegalArgumentException()).toInt
+  val restPortArg = args.view.tail.headOption.getOrElse("8080").toInt
 
   def restPort = restPortArg
 
