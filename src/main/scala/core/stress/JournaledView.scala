@@ -11,25 +11,36 @@ class JournaledView extends PersistentView with ActorLogging {
 
   override def persistenceId = "journaled-actor"
 
-  var state: ViewState = ViewState(JournaledActorState.initial(), 0L)
+  var states: Map[Long, ViewState] = Map.empty
+  var lastProcessedNumber = 0L
+
   val mediator = DistributedPubSubExtension(context.system).mediator
   mediator ! Subscribe("topicName", self)
 
   override def receive = {
     case newState: JournaledActorState => processNewState(newState)
-    case ReadState => sender ! state
+    case ReadState(expectedNumber) => checkState(expectedNumber)
     case SubscribeAck(Subscribe("topicName", None, `self`)) => log.info("Subscribed to events")
   }
 
+  private def checkState(expectedNumber: Long) {
+    val lastStateOpt = states.get(lastProcessedNumber)
+    val expectedStateOpt = states.get(expectedNumber)
+    val lastStateSendTimeOpt = lastStateOpt.map(_.journaledState.sendTime)
+    val response = expectedStateOpt.getOrElse(MissingState(lastProcessedNumber, lastStateSendTimeOpt))
+    sender ! response
+  }
+
   private def processNewState(newState: JournaledActorState) {
-    if (this.state.journaledState.number + 1 == newState.number) {
+    if (lastProcessedNumber + 1 == newState.number) {
       log.info("Updating view with new state")
       val diffMs = DateTime.now().getMillis - newState.sendTime.getMillis
-      this.state = ViewState(newState, diffMs)
+      this.states = this.states + (newState.number -> ViewState(newState, diffMs))
+      lastProcessedNumber = newState.number
     }
-    else if (this.state.journaledState.number + 1 < newState.number) {
+    else if (lastProcessedNumber + 1 < newState.number) {
       log.info("Restarting actor due to incosistent state.")
-      context.stop(self)
+      throw new IllegalStateException("restarting actor")
     }
     else {
       log.info("Skipping state " + newState.number)
@@ -39,6 +50,10 @@ class JournaledView extends PersistentView with ActorLogging {
   override def autoUpdate = false
 }
 
-case object ReadState
+case class ReadState(expectedNumber: Long)
 
-case class ViewState(journaledState: JournaledActorState, recoveryTimeMs: Long)
+trait ViewStateResponse
+
+case class ViewState(journaledState: JournaledActorState, recoveryTimeMs: Long) extends ViewStateResponse
+
+case class MissingState(lastNumber: Long, sendTimeOpt: Option[DateTime]) extends ViewStateResponse

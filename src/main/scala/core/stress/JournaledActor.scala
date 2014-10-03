@@ -25,7 +25,7 @@ class JournaledActor extends PersistentActor with ActorLogging {
     persistAsync(newState) {
       persistedState =>
         this.state = persistedState
-        sender ! "persisted"
+        sender ! PersistConfirmation(newState.number)
         if (failureCountdown > 0) {
           mediator ! Publish("topicName", newState)
         }
@@ -53,3 +53,4 @@ object JournaledActorState {
 }
 case class UpdateStateCommand(number: Long)
 
+case class PersistConfirmation(number: Long)
