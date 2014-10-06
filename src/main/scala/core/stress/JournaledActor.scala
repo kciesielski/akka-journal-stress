@@ -4,7 +4,8 @@ import akka.actor.ActorLogging
 import akka.contrib.pattern.DistributedPubSubExtension
 import akka.persistence.PersistentActor
 import org.joda.time.DateTime
-
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 class JournaledActor extends PersistentActor with ActorLogging {
 
   var state = JournaledActorState.initial()
@@ -13,6 +14,10 @@ class JournaledActor extends PersistentActor with ActorLogging {
   var failureCountdown = failFrequency
 
   import akka.contrib.pattern.DistributedPubSubMediator.Publish
+
+  context.system.scheduler.schedule(2 seconds, 2 seconds, mediator, heartbeat())
+
+  private def heartbeat() = Publish("topicName", WriterHeartbeat(state.number))
 
   override def receiveCommand = {
     case newState: JournaledActorState => updateState(newState)
@@ -47,6 +52,11 @@ class JournaledActor extends PersistentActor with ActorLogging {
       log.info(s"Recovered with state: $someState")
   }
 
+  private def doBroadcastHeartbeat() {
+    mediator ! Publish("topicName", WriterHeartbeat)
+
+  }
+
   override def persistenceId = "journaled-actor"
 }
 
@@ -61,3 +71,5 @@ case class UpdateStateCommand(number: Long)
 case class PersistConfirmation(number: Long)
 
 case class SetFailFrequency(freq: Int)
+
+case class WriterHeartbeat(lastSeq: Long)

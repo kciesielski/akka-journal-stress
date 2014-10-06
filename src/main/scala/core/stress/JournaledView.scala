@@ -5,6 +5,8 @@ import akka.contrib.pattern.DistributedPubSubExtension
 import akka.contrib.pattern.DistributedPubSubMediator.{Subscribe, SubscribeAck}
 import akka.persistence.PersistentView
 import org.joda.time.DateTime
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 class JournaledView extends PersistentView with ActorLogging {
 
   override def viewId = "journaled-view"
@@ -20,6 +22,7 @@ class JournaledView extends PersistentView with ActorLogging {
   override def receive = {
     case newState: JournaledActorState => processNewState(newState)
     case ReadState(expectedNumber) => checkState(expectedNumber)
+    case WriterHeartbeat(seqNo) => doCheckHeartbeat(seqNo)
     case SubscribeAck(Subscribe("topicName", None, `self`)) => log.info("Subscribed to events")
   }
 
@@ -29,6 +32,12 @@ class JournaledView extends PersistentView with ActorLogging {
     val lastStateSendTimeOpt = lastStateOpt.map(_.journaledState.sendTime)
     val response = expectedStateOpt.getOrElse(MissingState(lastProcessedNumber, lastStateSendTimeOpt))
     sender ! response
+  }
+
+  private def doCheckHeartbeat(writerSeqNo: Long) {
+    if (writerSeqNo != lastProcessedNumber + 1) {
+      throw new IllegalStateException(s"Restarting actor due to incosistent state from the heartbeat")
+    }
   }
 
   private def processNewState(newState: JournaledActorState) {
