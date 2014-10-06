@@ -52,7 +52,7 @@ trait CoreActors {
       singletonProps = Props(classOf[JournaledActor]),
       singletonName = "writer",
       terminationMessage = PoisonPill,
-      role = None))
+      role = None), "singleton")
 
   val writer = system.actorOf(
     ClusterSingletonProxy.props(
