@@ -26,6 +26,7 @@ trait BootedCore extends Core {
 
   val conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + nodePort)
     .withFallback(ConfigFactory.load())
+    .withFallback(ConfigFactory.load("aws.conf"))
 
   /**
    * Construct the ActorSystem we will use in our application
