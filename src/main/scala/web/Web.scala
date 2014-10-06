@@ -19,6 +19,8 @@ import spray.can.Http
 trait Web {
   this: App with Api with CoreActors with Core =>
 
+  val restPort: Int = Option(System.getProperty("restPort")).getOrElse("8080").toInt
+
   IO(Http)(system) ! Http.Bind(rootService, "0.0.0.0", port = restPort)
 
 }

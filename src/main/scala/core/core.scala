@@ -11,7 +11,6 @@ import core.stress.{JournaledView, StressTester, ReportCollector, JournaledActor
  */
 trait Core {
 
-  def restPort: Int
   implicit def system: ActorSystem
 
 }
@@ -23,10 +22,7 @@ trait Core {
 trait BootedCore extends Core {
   this: App =>
 
-  val nodePort: Int = args.view.headOption.getOrElse(throw new IllegalArgumentException()).toInt
-  val restPortArg = args.view.tail.headOption.getOrElse("8080").toInt
-
-  def restPort = restPortArg
+  val nodePort: Int = Option(System.getProperty("nodePort")).getOrElse("0").toInt
 
   val conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + nodePort)
     .withFallback(ConfigFactory.load())
