@@ -2,7 +2,7 @@ package core.stress
 
 import akka.actor.ActorLogging
 import akka.contrib.pattern.DistributedPubSubExtension
-import akka.persistence.PersistentActor
+import akka.persistence.{SaveSnapshotSuccess, SaveSnapshotFailure, SnapshotOffer, PersistentActor}
 import org.joda.time.DateTime
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -11,16 +11,25 @@ class JournaledActor extends PersistentActor with ActorLogging {
   var state = JournaledActorState.initial()
   val mediator = DistributedPubSubExtension(context.system).mediator
   var failFrequency = 50
+  val SnapshotFrequency = 500
   var failureCountdown = failFrequency
 
   import akka.contrib.pattern.DistributedPubSubMediator.Publish
 
-  context.system.scheduler.schedule(2 seconds, 2 seconds, mediator, heartbeat())
+  context.system.scheduler.schedule(2 seconds, 2 seconds, new Runnable {
+    override def run() {
+      mediator ! heartbeat()
+    }
+  })
 
   private def heartbeat() = Publish("topicName", WriterHeartbeat(state.number))
 
   override def receiveCommand = {
     case newState: JournaledActorState => updateState(newState)
+    case SaveSnapshotSuccess(metadata)         =>
+      log.info("Snapshot persisted")
+    case SaveSnapshotFailure(metadata, reason) =>
+      log.error("Could not persist snapshot")
     case SetFailFrequency(newFailFreq) =>
       this.failFrequency = newFailFreq
       resetFailCountdown()
@@ -31,6 +40,7 @@ class JournaledActor extends PersistentActor with ActorLogging {
     log.info("Updating state")
     persistAsync(newState) {
       persistedState =>
+        snapshotIfNeeded(newState)
         this.state = persistedState
         sender ! PersistConfirmation(newState.number)
         if (failureCountdown > 0) {
@@ -42,11 +52,21 @@ class JournaledActor extends PersistentActor with ActorLogging {
     }
   }
 
+  def snapshotIfNeeded(newState: JournaledActorState) {
+    if (newState.number % SnapshotFrequency == 0) {
+      log.info("Persisting snapshot")
+      saveSnapshot(newState)
+    }
+  }
+
   private def resetFailCountdown() {
     failureCountdown = failFrequency
   }
 
   override def receiveRecover = {
+    case SnapshotOffer(_, stateSnapshot: JournaledActorState) =>
+      log.info("Recovering from snapshot")
+      this.state = stateSnapshot
     case someState: JournaledActorState =>
       this.state = someState
       log.info(s"Recovered with state: $someState")
