@@ -1,10 +1,16 @@
 package core
 
-import akka.actor.{PoisonPill, Props, ActorSystem}
-import akka.contrib.pattern.{ClusterSingletonProxy, ClusterSingletonManager}
+import akka.actor.{ActorSystem, PoisonPill, Props}
+import akka.cluster.Cluster
+import akka.contrib.pattern.{ClusterSingletonManager, ClusterSingletonProxy}
+import akka.pattern.ask
 import com.typesafe.config.ConfigFactory
-import core.stress.{JournaledView, StressTester, ReportCollector, JournaledActor}
+import core.stress.SimpleClusterListener.IsRemoved
+import core.stress._
+import org.slf4j.LoggerFactory
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
 /**
  * Core is type containing the ``system: ActorSystem`` member. This enables us to use it in our
  * apps as well as in our tests.
@@ -22,7 +28,8 @@ trait Core {
 trait BootedCore extends Core {
   this: App =>
 
-  val nodePort: Int = Option(System.getProperty("nodePort")).getOrElse("0").toInt
+  val log = LoggerFactory.getLogger(getClass)
+  val nodePort: Int = Option(System.getProperty("nodePort")).getOrElse("2551").toInt
 
   val conf = ConfigFactory.parseString("akka.remote.netty.tcp.port=" + nodePort)
     .withFallback(ConfigFactory.load())
@@ -33,10 +40,35 @@ trait BootedCore extends Core {
    */
   implicit lazy val system = ActorSystem("ClusterSystem", conf)
 
+  val listener = system.actorOf(Props(classOf[SimpleClusterListener]))
+
   /**
    * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
    */
-  sys.addShutdownHook(system.shutdown())
+  sys.addShutdownHook({
+    Cluster(system).leave(Cluster(system).selfAddress)
+    blockUntilRemoved(10)
+    system.shutdown()
+  })
+
+  implicit val timeout: akka.util.Timeout = 3 seconds
+  import scala.concurrent.ExecutionContext.Implicits.global
+
+  private def blockUntilRemoved(retriesLeft: Long): Unit = {
+    if (retriesLeft > 0) {
+      val futureResp = listener ? IsRemoved(Cluster(system).selfAddress)
+      val dd = futureResp.map {
+        resp => if (!resp.asInstanceOf[Boolean]) {
+          Thread.sleep(1000)
+          blockUntilRemoved(retriesLeft - 1)
+        } else
+        {
+          log.info("Node removed itself from the cluster!")
+        }
+      }
+      Await.result(dd, atMost = 3 seconds)
+    }
+  }
 
 }
 
