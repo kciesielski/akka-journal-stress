@@ -1,7 +1,7 @@
 package core.stress
 
 import akka.actor.ActorLogging
-import akka.contrib.pattern.DistributedPubSubExtension
+import akka.contrib.pattern.{DistributedPubSubMediator, DistributedPubSubExtension}
 import akka.persistence.{SaveSnapshotSuccess, SaveSnapshotFailure, SnapshotOffer, PersistentActor}
 import org.joda.time.DateTime
 import scala.concurrent.duration._
@@ -14,18 +14,21 @@ class JournaledActor extends PersistentActor with ActorLogging {
   val SnapshotFrequency = 500
   var failureCountdown = failFrequency
 
-  import akka.contrib.pattern.DistributedPubSubMediator.Publish
+  import DistributedPubSubMediator.Publish
 
-  context.system.scheduler.schedule(2 seconds, 2 seconds, new Runnable {
-    override def run() {
-      mediator ! heartbeat()
-    }
-  })
+  scheduleNextHeartbeat()
+
+  private def scheduleNextHeartbeat() {
+    context.system.scheduler.scheduleOnce(2 seconds, self, SendHeartbeat)
+  }
 
   private def heartbeat() = Publish("topicName", WriterHeartbeat(state.number))
 
   override def receiveCommand = {
     case newState: JournaledActorState => updateState(newState)
+    case SendHeartbeat =>
+      mediator ! heartbeat()
+      scheduleNextHeartbeat()
     case SaveSnapshotSuccess(metadata)         =>
       log.info("Snapshot persisted")
     case SaveSnapshotFailure(metadata, reason) =>
@@ -93,3 +96,5 @@ case class PersistConfirmation(number: Long)
 case class SetFailFrequency(freq: Int)
 
 case class WriterHeartbeat(lastSeq: Long)
+
+case object SendHeartbeat
